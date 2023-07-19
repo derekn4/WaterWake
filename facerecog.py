@@ -13,7 +13,7 @@ if not video_capture.isOpened():
     print("Failed to open the webcam. Make sure it is connected and try again.")
     exit()
 
-face_cascade = cv2.CascadeClassifier('C:\\Users\\Derek\\Desktop\\Random Projs\\facial\\haarcascade_frontalface_default.xml')
+face_cascade = cv2.CascadeClassifier('C:\\Users\\Derek\\Desktop\\Random Projs\\facial\\models\\haarcascade_frontalface_default.xml')
 #right_eye_cascade = cv2.CascadeClassifier('C:\\Users\\Derek\\Desktop\\Random Projs\\facial\\haarcascade_mcs_righteye.xml')
 #left_eye_cascade = cv2.CascadeClassifier('C:\\Users\\Derek\\Desktop\\Random Projs\\facial\\haarcascade_mcs_lefteye.xml')
 
