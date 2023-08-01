@@ -3,7 +3,7 @@ import numpy as np
 
 
 print(cv2.__file__)
-webcam_index = 1  # Use 0 for the first webcam, 1 for the second, and so on
+webcam_index = 0  # Use 0 for the first webcam, 1 for the second, and so on
 
 # Create an instance of VideoCapture with the webcam index
 video_capture = cv2.VideoCapture(webcam_index)
@@ -13,9 +13,10 @@ if not video_capture.isOpened():
     print("Failed to open the webcam. Make sure it is connected and try again.")
     exit()
 
-face_cascade = cv2.CascadeClassifier('C:\\Users\\Derek\\Desktop\\Random Projs\\facial\\models\\haarcascade_frontalface_default.xml')
-#right_eye_cascade = cv2.CascadeClassifier('C:\\Users\\Derek\\Desktop\\Random Projs\\facial\\haarcascade_mcs_righteye.xml')
-#left_eye_cascade = cv2.CascadeClassifier('C:\\Users\\Derek\\Desktop\\Random Projs\\facial\\haarcascade_mcs_lefteye.xml')
+face_cascade = cv2.CascadeClassifier('E:\\Github Projs\\WaterWake\\models\\haarcascade_frontalface_default.xml')
+right_eye_cascade = cv2.CascadeClassifier('E:\\Github Projs\\WaterWake\\models\\haarcascade_mcs_righteye.xml')
+left_eye_cascade = cv2.CascadeClassifier('E:\\Github Projs\\WaterWake\\models\\haarcascade_mcs_lefteye.xml')
+side_profile_cascade = cv2.CascadeClassifier('E:\\Github Projs\\WaterWake\\models\\haarcascade_profileface.xml')
 
 stop_flag = False
 # Global variables for width and height
@@ -55,8 +56,8 @@ def perform_face_recognition():
             roi_color = frame[y:y+h, x:x+w]
 
             # Perform eye detection within the face region
-            #right_eyes = right_eye_cascade.detectMultiScale(roi_gray)
-            #left_eyes = left_eye_cascade.detectMultiScale(roi_gray)
+            right_eyes = right_eye_cascade.detectMultiScale(roi_gray)
+            left_eyes = left_eye_cascade.detectMultiScale(roi_gray)
             
             #for (ex, ey, ew, eh) in right_eyes:
                 # Draw a rectangle around the right eye
@@ -65,6 +66,19 @@ def perform_face_recognition():
             #for (ex, ey, ew, eh) in left_eyes:
                 # Draw a rectangle around the left eye
             #    cv2.rectangle(roi_color, (ex, ey), (ex+ew, ey+eh), (255, 0, 0), 2)
+            # If either the right eye or left eye is detected, trigger side profile detection
+            if len(right_eyes) > 0 or len(left_eyes) > 0:
+                label = "Side Profile"
+                cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                
+                # Perform side profile detection within the face region
+                side_profiles = side_profile_cascade.detectMultiScale(roi_gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+                for (px, py, pw, ph) in side_profiles:
+                    # Convert the side profile coordinates to the global frame coordinates
+                    side_profile_x, side_profile_y = x + px, y + py
+                    cv2.rectangle(frame, (side_profile_x, side_profile_y), (side_profile_x+pw, side_profile_y+ph), (0, 0, 255), 2)
+                    label = "Side Profile"
+                    cv2.putText(frame, label, (side_profile_x, side_profile_y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
         # Get the dimensions of the frame
         height, width = frame.shape[:2]

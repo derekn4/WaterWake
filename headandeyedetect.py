@@ -4,7 +4,7 @@ from imutils import face_utils
 
 # Load face detector from dlib
 face_detector = dlib.get_frontal_face_detector()
-eye_detector = dlib.shape_predictor('C:\\Users\\Derek\\Desktop\\Random Projs\\facial\\models\\shape_predictor_68_face_landmarks.dat')
+eye_detector = dlib.shape_predictor('E:\\Github Projs\\WaterWake\\models\\shape_predictor_68_face_landmarks.dat')
 
 # Initialize variables for eye aspect ratio (EAR) calculation
 EYE_AR_THRESH = 0.3
@@ -30,7 +30,7 @@ def euclidean_distance(a, b):
 
 
 # Open the webcam
-video_capture = cv2.VideoCapture(1)
+video_capture = cv2.VideoCapture(0)
 
 while True:
     ret, frame = video_capture.read()

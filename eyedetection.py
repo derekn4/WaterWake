@@ -5,7 +5,7 @@ import time
 
 # Load face and eye detectors from dlib
 face_detector = dlib.get_frontal_face_detector()
-eye_detector = dlib.shape_predictor('C:\\Users\\Derek\\Desktop\\Random Projs\\facial\\models\\shape_predictor_68_face_landmarks.dat')
+eye_detector = dlib.shape_predictor('E:\\Github Projs\\WaterWake\\models\\shape_predictor_68_face_landmarks.dat')
 
 # Initialize variables for eye aspect ratio (EAR) calculation
 EYE_AR_THRESH = 0.3
