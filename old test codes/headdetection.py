@@ -5,7 +5,7 @@ import dlib
 face_detector = dlib.get_frontal_face_detector()
 
 # Open the webcam
-video_capture = cv2.VideoCapture(1)
+video_capture = cv2.VideoCapture(0)
 
 while True:
     ret, frame = video_capture.read()
@@ -21,6 +21,20 @@ while True:
     for face in faces:
         # Get the head region from the frame
         (startX, startY, endX, endY) = (face.left(), face.top(), face.right(), face.bottom())
+        
+        # Expand the size of the bounding box
+        padding = 30  # Adjust this value as needed
+        startX -= padding
+        startY -= padding
+        endX += padding
+        endY += padding
+
+        # Make sure the bounding box stays within the frame boundaries
+        startX = max(0, startX)
+        startY = max(0, startY)
+        endX = min(frame.shape[1], endX)
+        endY = min(frame.shape[0], endY)
+        
         head = frame[startY:endY, startX:endX]
 
         # Draw a rectangle around the detected head
