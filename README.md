@@ -88,6 +88,7 @@ WaterWake (..or SquirtAlarm) is meant as a fun project to utilize Computer Visio
 * <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/OpenCV_Logo_with_text_svg_version.svg/1200px-OpenCV_Logo_with_text_svg_version.svg.png" alt="OpenCV" width="100"/>
 * RaspberryPi
 * Arduino
+* Swift (potentially)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -114,11 +115,15 @@ Initially, I thought that a simple facial detection would suffice for this porti
 
 ## Alarm
 - Work in Progress
+- Plan: iOS application to set alarm and send trigger to my laptop to activate the head detection
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Shooting Water
 - Work in Progress
+- Plan: Arduino and RaspberryPi connected to my laptop and used to:
+  - Aim the watergun 
+  - Shoot water
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
