@@ -1,0 +1,2 @@
+# Raspberry Pi Requirements
+RPi.GPIO>=0.7.0
