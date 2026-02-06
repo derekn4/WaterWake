@@ -84,8 +84,8 @@ WaterWake (..or SquirtAlarm) is meant as a fun project to utilize Computer Visio
 
 ### Built With
 
-* [![Python][Python.org]][Python-url]
-* <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/OpenCV_Logo_with_text_svg_version.svg/1200px-OpenCV_Logo_with_text_svg_version.svg.png" alt="OpenCV" width="100"/>
+* Python
+* OpenCV
 * RaspberryPi
 * Arduino
 * Swift (potentially)
