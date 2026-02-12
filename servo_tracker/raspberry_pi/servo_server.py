@@ -14,13 +14,23 @@ from dataclasses import dataclass
 from typing import Optional
 import os
 
-# Import servo controller (will be in same directory after file moves)
+# Import controller — try Arduino serial first, then GPIO, then simulation
+SERVO_BACKEND = "simulation"
+
 try:
-    from servo_controller import ServoController
-    SERVO_AVAILABLE = True
+    from serial_servo_controller import SerialServoController
+    SERVO_BACKEND = "serial"
 except ImportError:
-    print("Warning: servo_controller not found, running in simulation mode")
-    SERVO_AVAILABLE = False
+    pass
+
+if SERVO_BACKEND == "simulation":
+    try:
+        from servo_controller import ServoController
+        SERVO_BACKEND = "gpio"
+    except ImportError:
+        print("Warning: no servo controller found, running in simulation mode")
+
+SERVO_AVAILABLE = SERVO_BACKEND != "simulation"
 
 @dataclass
 class TrackingData:
@@ -36,11 +46,13 @@ class TrackingData:
 class ServoServer:
     """TCP server that receives tracking data and controls servos"""
     
-    def __init__(self, host: str = "0.0.0.0", port: int = 8888, pan_pin: int = 18, tilt_pin: int = 19):
+    def __init__(self, host: str = "0.0.0.0", port: int = 8888,
+                 pan_pin: int = 18, tilt_pin: int = 19, arduino_port: str = ""):
         self.host = host
         self.port = port
         self.pan_pin = pan_pin
         self.tilt_pin = tilt_pin
+        self.arduino_port = arduino_port
         
         # Server socket
         self.server_socket = None
@@ -72,20 +84,29 @@ class ServoServer:
         sys.exit(0)
         
     def initialize_servo_controller(self):
-        """Initialize servo controller"""
-        if not self.servo_available:
-            print("Servo controller not available - running in simulation mode")
-            return False
-            
+        """Initialize servo controller — Arduino serial first, then GPIO, then simulation."""
+
+        # Try Arduino serial
+        if SERVO_BACKEND in ("serial", "simulation"):
+            try:
+                self.servo_controller = SerialServoController(port=self.arduino_port)
+                print("Servo controller initialized (Arduino serial)")
+                return True
+            except Exception as e:
+                print(f"Arduino serial init failed: {e}, trying next backend...")
+
+        # Try GPIO
         try:
-            self.servo_controller = ServoController(self.pan_pin, self.tilt_pin)
-            print(f"Servo controller initialized - Pan: GPIO{self.pan_pin}, Tilt: GPIO{self.tilt_pin}")
+            from servo_controller import ServoController as GPIOController
+            self.servo_controller = GPIOController(self.pan_pin, self.tilt_pin)
+            print(f"Servo controller initialized (GPIO) - Pan: GPIO{self.pan_pin}, Tilt: GPIO{self.tilt_pin}")
             return True
         except Exception as e:
-            print(f"Failed to initialize servo controller: {e}")
-            print("Running in simulation mode")
-            self.servo_controller = None
-            return False
+            print(f"GPIO init failed: {e}")
+
+        print("Running in simulation mode")
+        self.servo_controller = None
+        return False
             
     def start_server(self):
         """Start the TCP server"""
@@ -310,18 +331,25 @@ def main():
                        help='Server port (default: 8888)')
     parser.add_argument('--pan-pin', type=int, default=18, 
                        help='GPIO pin for pan servo (default: 18)')
-    parser.add_argument('--tilt-pin', type=int, default=19, 
+    parser.add_argument('--tilt-pin', type=int, default=19,
                        help='GPIO pin for tilt servo (default: 19)')
-    
+    parser.add_argument('--arduino-port', type=str, default='',
+                       help='Arduino serial port (e.g. /dev/ttyACM0). Empty = auto-detect.')
+
     args = parser.parse_args()
-    
+
     print("=== Raspberry Pi Servo Server ===")
     print(f"Server: {args.host}:{args.port}")
-    print(f"Pan servo: GPIO{args.pan_pin}")
-    print(f"Tilt servo: GPIO{args.tilt_pin}")
-    
+    print(f"Backend: {SERVO_BACKEND}")
+    if SERVO_BACKEND == "serial":
+        port_display = args.arduino_port or "(auto-detect)"
+        print(f"Arduino port: {port_display}")
+    else:
+        print(f"Pan servo: GPIO{args.pan_pin}")
+        print(f"Tilt servo: GPIO{args.tilt_pin}")
+
     # Create and run server
-    server = ServoServer(args.host, args.port, args.pan_pin, args.tilt_pin)
+    server = ServoServer(args.host, args.port, args.pan_pin, args.tilt_pin, args.arduino_port)
     
     try:
         server.run()

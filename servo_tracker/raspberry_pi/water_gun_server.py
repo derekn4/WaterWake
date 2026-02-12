@@ -13,19 +13,30 @@ import sys
 from dataclasses import dataclass
 from typing import Optional
 
-# Import water gun controller
+# Import controller — try Arduino serial first, then GPIO, then simulation
+BACKEND = "simulation"
+
 try:
-    from water_gun_controller import WaterGunController
-    WATER_GUN_AVAILABLE = True
+    from serial_water_gun_controller import SerialWaterGunController
+    BACKEND = "serial"
+    print("Serial (Arduino) water gun controller available")
 except ImportError:
-    print("Warning: water_gun_controller not found, falling back to basic servo control")
+    pass
+
+if BACKEND == "simulation":
     try:
-        from servo_controller import ServoController
-        WATER_GUN_AVAILABLE = False
+        from water_gun_controller import WaterGunController
+        BACKEND = "gpio"
+        print("GPIO water gun controller available")
     except ImportError:
-        print("Warning: servo_controller not found, running in simulation mode")
-        ServoController = None
-        WATER_GUN_AVAILABLE = False
+        try:
+            from servo_controller import ServoController
+            BACKEND = "gpio_basic"
+            print("GPIO basic servo controller available (no trigger)")
+        except ImportError:
+            print("No servo controller found — running in simulation mode")
+
+WATER_GUN_AVAILABLE = BACKEND in ("serial", "gpio")
 
 @dataclass
 class TrackingData:
@@ -40,14 +51,16 @@ class TrackingData:
 
 class WaterGunServer:
     """Enhanced TCP server with water gun trigger control"""
-    
-    def __init__(self, host: str = "0.0.0.0", port: int = 8888, 
-                 pan_pin: int = 18, tilt_pin: int = 19, trigger_pin: int = 20):
+
+    def __init__(self, host: str = "0.0.0.0", port: int = 8888,
+                 pan_pin: int = 18, tilt_pin: int = 19, trigger_pin: int = 20,
+                 arduino_port: str = ""):
         self.host = host
         self.port = port
         self.pan_pin = pan_pin
         self.tilt_pin = tilt_pin
         self.trigger_pin = trigger_pin
+        self.arduino_port = arduino_port
         
         # Server socket
         self.server_socket = None
@@ -80,26 +93,44 @@ class WaterGunServer:
         sys.exit(0)
         
     def initialize_controller(self):
-        """Initialize water gun controller"""
-        if not ServoController:
-            print("Servo controller not available - running in simulation mode")
-            return False
-            
+        """Initialize controller — Arduino serial first, then GPIO, then simulation."""
+
+        # --- Try Arduino serial backend ---
         try:
-            if self.water_gun_available:
-                self.controller = WaterGunController(self.pan_pin, self.tilt_pin, self.trigger_pin)
-                print(f"🔫 Water gun controller initialized")
-                print(f"   Pan: GPIO{self.pan_pin}, Tilt: GPIO{self.tilt_pin}, Trigger: GPIO{self.trigger_pin}")
-            else:
-                self.controller = ServoController(self.pan_pin, self.tilt_pin)
-                print(f"Basic servo controller initialized (no trigger control)")
-                print(f"   Pan: GPIO{self.pan_pin}, Tilt: GPIO{self.tilt_pin}")
+            from serial_water_gun_controller import SerialWaterGunController as SerialWG
+            self.controller = SerialWG(port=self.arduino_port)
+            self.water_gun_available = True
+            print("Water gun controller initialized (Arduino serial)")
             return True
         except Exception as e:
-            print(f"Failed to initialize controller: {e}")
-            print("Running in simulation mode")
-            self.controller = None
-            return False
+            print(f"Arduino serial init failed: {e}, trying next backend...")
+
+        # --- Try GPIO water gun backend ---
+        try:
+            from water_gun_controller import WaterGunController as GPIOWG
+            self.controller = GPIOWG(self.pan_pin, self.tilt_pin, self.trigger_pin)
+            self.water_gun_available = True
+            print(f"Water gun controller initialized (GPIO)")
+            print(f"   Pan: GPIO{self.pan_pin}, Tilt: GPIO{self.tilt_pin}, Trigger: GPIO{self.trigger_pin}")
+            return True
+        except Exception as e:
+            print(f"GPIO water gun init failed: {e}, trying next backend...")
+
+        # --- Try GPIO basic servo (no trigger) ---
+        try:
+            from servo_controller import ServoController as GPIOServo
+            self.controller = GPIOServo(self.pan_pin, self.tilt_pin)
+            self.water_gun_available = False
+            print(f"Basic servo controller initialized (GPIO, no trigger)")
+            return True
+        except Exception as e:
+            print(f"GPIO basic init failed: {e}")
+
+        # --- Simulation fallback ---
+        print("Running in simulation mode")
+        self.controller = None
+        self.water_gun_available = False
+        return False
             
     def start_server(self):
         """Start the TCP server"""
@@ -407,19 +438,27 @@ def main():
                        help='GPIO pin for pan servo (default: 18)')
     parser.add_argument('--tilt-pin', type=int, default=19, 
                        help='GPIO pin for tilt servo (default: 19)')
-    parser.add_argument('--trigger-pin', type=int, default=20, 
+    parser.add_argument('--trigger-pin', type=int, default=20,
                        help='GPIO pin for trigger servo (default: 20)')
-    
+    parser.add_argument('--arduino-port', type=str, default='',
+                       help='Arduino serial port (e.g. /dev/ttyACM0). Empty = auto-detect.')
+
     args = parser.parse_args()
-    
-    print("🔫 === Water Gun Server ===")
-    print(f"🌐 Server: {args.host}:{args.port}")
-    print(f"🎯 Pan servo: GPIO{args.pan_pin}")
-    print(f"🎯 Tilt servo: GPIO{args.tilt_pin}")
-    print(f"🔫 Trigger servo: GPIO{args.trigger_pin}")
-    
+
+    print("=== Water Gun Server ===")
+    print(f"Server: {args.host}:{args.port}")
+    print(f"Backend: {BACKEND}")
+    if BACKEND == "serial":
+        port_display = args.arduino_port or "(auto-detect)"
+        print(f"Arduino port: {port_display}")
+    else:
+        print(f"Pan servo: GPIO{args.pan_pin}")
+        print(f"Tilt servo: GPIO{args.tilt_pin}")
+        print(f"Trigger servo: GPIO{args.trigger_pin}")
+
     # Create and run server
-    server = WaterGunServer(args.host, args.port, args.pan_pin, args.tilt_pin, args.trigger_pin)
+    server = WaterGunServer(args.host, args.port, args.pan_pin, args.tilt_pin,
+                            args.trigger_pin, args.arduino_port)
     
     try:
         server.run()
